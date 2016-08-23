@@ -1,0 +1,8 @@
+*.pyc
+*~
+.DS_Store
+/test/data
+/test/logs
+/dist
+/build
+/.*
