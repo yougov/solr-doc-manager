@@ -4,10 +4,14 @@ Getting Started
 Installation
 ~~~~~~~~~~~~
 
-This package is a document manager for mongo-connector.
+This package is a document manager for `mongo-connector <https://github.com/mongodb-labs/mongo-connector>`_.
 
-The easiest way to install solr-doc-manager is with
-`pip <https://pypi.python.org/pypi/pip>`__::
+The easiest way to get started is to install solr-doc-manager at the same time
+as mongo-connector with `pip <https://pypi.python.org/pypi/pip>`__::
+
+  pip install mongo-connector[solr]
+
+If you already have mongo-connector installed, install solr-doc-manager via::
 
   pip install solr-doc-manager
 
@@ -36,7 +40,18 @@ Requirements
 
       git clone https://github.com/mongodb-labs/solr-doc-manager
 
-2. Mongo Orchestration
+2. Solr
+
+  The integration tests require Solr to be running. To set up and run Solr::
+
+      curl -O http://archive.apache.org/dist/lucene/solr/4.9.1/solr-4.9.1.tgz
+      tar -zxf solr-4.9.1.tgz
+      cp mongo_connector/doc_managers/schema.xml solr-4.9.1/example/solr/collection1/conf/
+      cd solr-4.9.1/example/ && java -Djetty.port=8983 -Dsolr.solr.home=solr -jar start.jar > /dev/null 2>&1 &
+
+  Solr will be running on http://localhost:8983/solr
+
+3. Mongo Orchestration
 
   Mongo Connector runs MongoDB on its own using another tool called `Mongo Orchestration <https://github.com/mongodb/mongo-orchestration>`__. This package should install automatically if you run ``python setup.py test``, but the Mongo Orchestration server still needs to be started manually before running the tests::
 
@@ -48,7 +63,7 @@ Requirements
 
   The location of the MongoDB server should be set in orchestration.config. For more information on how to use Mongo Orchestration, or how to use it with different arguments, please look at the Mongo-Orchestration README.
 
-3. Environment variables
+4. Environment variables
 
   There are a few influential environment variables that affect the tests. These are:
 
