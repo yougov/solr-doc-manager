@@ -37,6 +37,10 @@ from mongo_connector.util import exception_wrapper, retry_until_ok
 from mongo_connector.doc_managers.doc_manager_base import DocManagerBase
 from mongo_connector.doc_managers.formatters import DocumentFlattener
 
+__version__ = '0.1.0'
+"""Solr DocManager version."""
+
+
 wrap_exceptions = exception_wrapper({
     SolrError: errors.OperationFailed,
     URLError: errors.ConnectionFailed,
