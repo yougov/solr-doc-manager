@@ -1,6 +1,8 @@
 Getting Started
 ---------------
 
+Ownership of the solr-doc-manager repo has been transferred to YouGov.  MongoDB would like to thank Jason Coombs, Executive Technical Director at YouGov, for agreeing to maintain this project.
+
 Installation
 ~~~~~~~~~~~~
 
