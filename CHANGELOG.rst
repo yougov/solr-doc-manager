@@ -1,6 +1,12 @@
 Changelog
 =========
 
+Version 0.1.1
+-------------
+
+Added handling for datetime.datetime to JSON serialization exception in pysolr (starting with v3.9.0)
+
+
 Version 0.1.0
 -------------
 
