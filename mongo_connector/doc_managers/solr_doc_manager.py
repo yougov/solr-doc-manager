@@ -38,7 +38,7 @@ from mongo_connector.util import exception_wrapper, retry_until_ok
 from mongo_connector.doc_managers.doc_manager_base import DocManagerBase
 from mongo_connector.doc_managers.formatters import DocumentFlattener
 
-__version__ = '0.1.1'
+__version__ = '0.1.2'
 """Solr DocManager version."""
 
 
@@ -80,6 +80,7 @@ class DocManager(DocManagerBase):
         self.field_list = []
         self._build_fields()
         self._formatter = DocumentFlattener()
+        self.skip_ns_update_sfxs = kwargs.get('skipUpdateNsSuffixes', [])
 
     # Required in order to avoid issues related to pysolr
     # Particularly pysolr starting from v3.9.0 (3.8.1 works fine)
@@ -162,8 +163,8 @@ class DocManager(DocManagerBase):
         # SOLR cannot index fields within sub-documents, so flatten documents
         # with the dot-separated path to each value as the respective key
         flat_doc = self._formatter.format_document(doc)
-		
-		# Convert all values to their string representations (this is particularly related to datetime)
+
+        # Convert all values to their string representations (this is particularly related to datetime)
         for key in flat_doc:
             if isinstance(flat_doc[key], datetime.datetime):
                 flat_doc[key] = self._convert_object_to_str(flat_doc[key])
@@ -177,6 +178,7 @@ class DocManager(DocManagerBase):
                     regex.match(field) for regex in self._dynamic_field_regexes
                 )
             return dict((k, v) for k, v in flat_doc.items() if include_field(k))
+
         return flat_doc
 
     def stop(self):
@@ -261,8 +263,16 @@ class DocManager(DocManagerBase):
             # Document may not be retrievable yet
             self.commit()
             results = self.solr.search(query)
+
         # Results is an iterable containing only 1 result
         for doc in results:
+            # Check first whether we are allowed to perform update for the given namespace
+            logging.debug("Solr DocManager set to skip updates for the following namespace suffixes: %s" % self.skip_ns_update_sfxs)
+            for skipUpdatesNsSuffix in self.skip_ns_update_sfxs:
+                if namespace.endswith(skipUpdatesNsSuffix):
+                    logging.info("Update for namespace '%s' was skipped" % namespace)
+                    return doc		
+
             # Remove metadata previously stored by Mongo Connector.
             doc.pop('ns')
             doc.pop('_ts')

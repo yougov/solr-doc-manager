@@ -1,6 +1,11 @@
 Changelog
 =========
 
+Version 0.1.2
+
+Added support for the "skipUpdateNsSuffixes": [] param. Provided via JSON config file as: docManagers.args.skipUpdateNsSuffixes: []
+
+
 Version 0.1.1
 -------------
 
