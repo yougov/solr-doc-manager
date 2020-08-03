@@ -38,7 +38,7 @@ from mongo_connector.util import exception_wrapper, retry_until_ok
 from mongo_connector.doc_managers.doc_manager_base import DocManagerBase
 from mongo_connector.doc_managers.formatters import DocumentFlattener
 
-__version__ = '0.1.2'
+__version__ = '0.1.3'
 """Solr DocManager version."""
 
 
@@ -333,13 +333,18 @@ class DocManager(DocManagerBase):
         if self.auto_commit_interval == 0:
             params['commit'] = 'true'
 
-        request = Request(os.path.join(
-            self.url, "update/extract?%s" % urlencode(params)))
+        url = os.path.join(self.url, "update/extract?%s" % urlencode(params))
+        request = Request(url)
 
         request.add_header("Content-type", "application/octet-stream")
         request.data = f
-        response = urlopen(request)
-        logging.debug(response.read())
+        try:
+            logging.debug("Submitting GridFS file [filename='%s'; id='%s'; ns='%s'] to Solr Cell: %s" % (f.filename, f._id, namespace, url))
+            response = urlopen(request)
+            logging.debug(response.read())
+        except Exception:
+            logging.error("Error submitting GridFS file [filename='%s'; id='%s'; ns='%s'] to Solr Cell: %s" % (f.filename, f._id, namespace, url))
+            raise
 
     @wrap_exceptions
     def remove(self, document_id, namespace, timestamp):
