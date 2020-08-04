@@ -24,6 +24,7 @@ import json
 import logging
 import os
 import re
+import datetime
 
 from pysolr import Solr, SolrError
 
@@ -37,7 +38,7 @@ from mongo_connector.util import exception_wrapper, retry_until_ok
 from mongo_connector.doc_managers.doc_manager_base import DocManagerBase
 from mongo_connector.doc_managers.formatters import DocumentFlattener
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 """Solr DocManager version."""
 
 
@@ -79,6 +80,15 @@ class DocManager(DocManagerBase):
         self.field_list = []
         self._build_fields()
         self._formatter = DocumentFlattener()
+
+    # Required in order to avoid issues related to pysolr
+    # Particularly pysolr starting from v3.9.0 (3.8.1 works fine)
+    # will throw the following exceptions:
+    # - TypeError: Object of type 'datetime' is not JSON serializable
+    # - TypeError: datetime.datetime(2012, 8, 8, 21, 46, 24, 862000) is not JSON serializable
+    def _convert_object_to_str(self, obj):
+        if isinstance(obj, (datetime.date, datetime.datetime)):
+            return obj.isoformat()
 
     def _parse_fields(self, result, field_name):
         """ If Schema access, parse fields and build respective lists
@@ -152,6 +162,11 @@ class DocManager(DocManagerBase):
         # SOLR cannot index fields within sub-documents, so flatten documents
         # with the dot-separated path to each value as the respective key
         flat_doc = self._formatter.format_document(doc)
+		
+		# Convert all values to their string representations (this is particularly related to datetime)
+        for key in flat_doc:
+            if isinstance(flat_doc[key], datetime.datetime):
+                flat_doc[key] = self._convert_object_to_str(flat_doc[key])
 
         # Only include fields that are explicitly provided in the
         # schema or match one of the dynamic field patterns, if
