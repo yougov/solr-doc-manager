@@ -32,7 +32,7 @@ class TestSolrDocManager(SolrTestCase):
     def setUp(self):
         """Empty Solr at the start of every test
         """
-        self._remove()
+        #self._remove()
 
     def test_update(self):
         doc_id = '1'
@@ -72,6 +72,71 @@ class TestSolrDocManager(SolrTestCase):
         replacement = {'_id': 1, 'title': 'unique key replaced!'}
         replaced = docman.apply_update(from_solr, replacement)
         self.assertEqual('unique key replaced!', replaced['title'])
+
+    def test_setting_of_fields_for_v1_format(self):
+        docman = DocManager(solr_url, unique_key='id')
+        from_solr = {'id': 1, 'n1': 'name 1', 'n2':'name 2', 'n3': 'name 3'}
+        replacement = {'$v': 1, '$set':{ 'n1': 'changed name 1', 'n2':'changed name 2'}}
+        replaced = docman.apply_update(from_solr, replacement)
+        self.assertEqual('changed name 1', replaced['n1'])
+        self.assertEqual('changed name 2', replaced['n2'])
+        self.assertEqual('name 3', replaced['n3'])
+
+    def test_unsetting_of_fields_for_v1_format(self):
+        docman = DocManager(solr_url, unique_key='id')
+        # Document coming from Solr. 'id' is the unique key.
+        from_solr = {'id': 1, 'n1': 'name 1', 'n2':'name 2', 'n3': 'name 3'}
+        # Replacement coming from an oplog entry in MongoDB. 
+        replacement = {'$v': 1, '$unset':{ 'n1': '', 'n2':''}}
+        replaced = docman.apply_update(from_solr, replacement)
+        self.assertFalse('n1' in replaced)
+        self.assertFalse('n2' in replaced)
+
+        self.assertEqual('name 3', replaced['n3'])
+
+    def test_setting_of_fields_for_v2_format(self):
+        docman = DocManager(solr_url, unique_key='id')
+        # Document coming from Solr. 'id' is the unique key.
+        from_solr = {'id': 1, 'n1': 'name 1', 'n2':'name 2', 'n3': 'name 3'}
+        # Replacement coming from an oplog entry in MongoDB. 
+        replacement = {'$v': 2, 'diff': {'u':{ 'n1': 'changed name 1', 'n2':'changed name 2'}}}
+        replaced = docman.apply_update(from_solr, replacement)
+        self.assertEqual('changed name 1', replaced['n1'])
+        self.assertEqual('changed name 2', replaced['n2'])
+        self.assertEqual('name 3', replaced['n3'])
+
+    def test_unsetting_of_fields_for_v2_format(self):
+        docman = DocManager(solr_url, unique_key='id')
+        # Document coming from Solr. 'id' is the unique key.
+        from_solr = {'id': 1, 'n1': 'name 1', 'n2':'name 2', 'n3': 'name 3'}
+        # Replacement coming from an oplog entry in MongoDB. 
+        replacement = {'$v': 2, 'diff': {'d':{ 'n1': False, 'n2': False}}}
+        replaced = docman.apply_update(from_solr, replacement)
+        self.assertFalse('n1' in replaced)
+        self.assertFalse('n2' in replaced)
+
+        self.assertEqual('name 3', replaced['n3'])
+
+    def test_setting_to_v1_format_incase_of_missing_version_field(self):
+        docman = DocManager(solr_url, unique_key='id')
+        from_solr = {'id': 1, 'n1': 'name 1', 'n2':'name 2', 'n3': 'name 3'}
+        replacement = {'$set':{ 'n1': 'changed name 1', 'n2':'changed name 2'}}
+        replaced = docman.apply_update(from_solr, replacement)
+        self.assertEqual('changed name 1', replaced['n1'])
+        self.assertEqual('changed name 2', replaced['n2'])
+        self.assertEqual('name 3', replaced['n3'])
+
+    def test_unsetting_to_v1_format_incase_of_missing_version_field(self):
+        docman = DocManager(solr_url, unique_key='id')
+        # Document coming from Solr. 'id' is the unique key.
+        from_solr = {'id': 1, 'n1': 'name 1', 'n2':'name 2', 'n3': 'name 3'}
+        # Replacement coming from an oplog entry in MongoDB. 
+        replacement = {'$unset':{ 'n1': '', 'n2':''}}
+        replaced = docman.apply_update(from_solr, replacement)
+        self.assertFalse('n1' in replaced)
+        self.assertFalse('n2' in replaced)
+
+        self.assertEqual('name 3', replaced['n3'])
 
     def test_upsert(self):
         """Ensure we can properly insert into Solr via DocManager.

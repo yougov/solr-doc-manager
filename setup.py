@@ -22,7 +22,7 @@ except IOError:
     long_description = None  # Install without README.rst
 
 setup(name='solr-doc-manager',
-      version='0.1.0',
+      version='0.1.1',
       description='Solr plugin for mongo-connector',
       long_description=long_description,
       platforms=['any'],
