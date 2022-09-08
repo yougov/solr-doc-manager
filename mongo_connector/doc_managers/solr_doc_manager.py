@@ -54,6 +54,80 @@ ESCAPE_CHARACTERS = set('+-&|!(){}[]^"~*?:\\/')
 decoder = json.JSONDecoder()
 
 
+
+class MongoUpdateSpecV1(object):
+    """
+     Examples of object received from mongo
+     For updating fields
+     {
+		"$v" : 1,
+		"$set" : {
+			"company_name" : "new comp name"
+		}
+	}
+
+    For deleting fields
+     {
+		"$v" : 1,
+		"$unset" : {
+			"company_name" : ""
+		}
+	}
+    """
+    def __init__(self, update_spec) -> None:
+        self.update_spec = update_spec
+
+    def is_a_update(self):
+        return '$set' in self.update_spec or '$unset' in self.update_spec
+
+    def set_fields(self):
+        return self.update_spec.get('$set',{}).items()
+
+    def unset_fields(self):
+        return self.update_spec.get('$unset',{}).keys()
+
+class MongoUpdateSpecV2(object):
+    """
+     Examples of object received from mongo
+     For updating fields
+    {
+		"$v" : 2,
+		"diff" : {
+			"u" : {
+				"company_name" : "new comp name",
+				"website_url" : "https://www.namename.com"
+			}
+		}
+	}
+    For deleting fields
+    {
+		"$v" : 2,
+		"diff" : {
+			"d" : {
+				"deleted_field1" : false,
+				"deleted_field2" : false
+			}
+		}
+	}
+    """
+    def __init__(self, update_spec) -> None:
+        self.update_spec = update_spec
+
+    def is_a_update(self):
+        diff = self.update_spec.get('diff',{})
+        return 'u' in diff or 'd' in diff
+
+    def set_fields(self):
+        return self.update_spec.get('diff',{}).get('u',{}).items()
+
+    def unset_fields(self):
+        return self.update_spec.get('diff',{}).get('d', {}).keys()
+
+
+def _parse_mongo_update_spec(update_spec):
+    version = update_spec.get('$v', -1)
+    return MongoUpdateSpecV2(update_spec) if version == 2 else MongoUpdateSpecV1(update_spec)
+   
 class DocManager(DocManagerBase):
     """The DocManager class creates a connection to the backend engine and
     adds/removes documents, and in the case of rollback, searches for them.
@@ -194,36 +268,37 @@ class DocManager(DocManagerBase):
 
     def apply_update(self, doc, update_spec):
         """Override DocManagerBase.apply_update to have flat documents."""
+        mongo_spec = _parse_mongo_update_spec(update_spec)
         # Replace a whole document
-        if not '$set' in update_spec and not '$unset' in update_spec:
+        if not mongo_spec.is_a_update():
             # update_spec contains the new document.
             # Update the key in Solr based on the unique_key mentioned as
             # parameter.
             update_spec['_id'] = doc[self.unique_key]
             return update_spec
-        for to_set in update_spec.get("$set", []):
-            value = update_spec['$set'][to_set]
+        for set_field_name, field_value in mongo_spec.set_fields():
             # Find dotted-path to the value, remove that key from doc, then
             # put value at key:
             keys_to_pop = []
             for key in doc:
-                if key.startswith(to_set):
-                    if key == to_set or key[len(to_set)] == '.':
+                if key.startswith(set_field_name):
+                    if key == set_field_name or key[len(set_field_name)] == '.':
                         keys_to_pop.append(key)
             for key in keys_to_pop:
                 doc.pop(key)
-            doc[to_set] = value
-        for to_unset in update_spec.get("$unset", []):
+            doc[set_field_name] = field_value
+        for unset_field_name in mongo_spec.unset_fields():
             # MongoDB < 2.5.2 reports $unset for fields that don't exist within
             # the document being updated.
             keys_to_pop = []
             for key in doc:
-                if key.startswith(to_unset):
-                    if key == to_unset or key[len(to_unset)] == '.':
+                if key.startswith(unset_field_name):
+                    if key == unset_field_name or key[len(unset_field_name)] == '.':
                         keys_to_pop.append(key)
             for key in keys_to_pop:
                 doc.pop(key)
         return doc
+   
 
     @wrap_exceptions
     def update(self, document_id, update_spec, namespace, timestamp):
