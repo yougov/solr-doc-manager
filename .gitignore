@@ -6,3 +6,4 @@
 /dist
 /build
 /.*
+/solr_doc_manager.egg-info

@@ -37,7 +37,7 @@ from mongo_connector.util import exception_wrapper, retry_until_ok
 from mongo_connector.doc_managers.doc_manager_base import DocManagerBase
 from mongo_connector.doc_managers.formatters import DocumentFlattener
 
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 """Solr DocManager version."""
 
 
